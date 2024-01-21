@@ -10,9 +10,9 @@ namespace ConsoleClientWithBrowser;
 
 public class Program
 {
-    static string _authority = "https://ids2.app1.es/";
-    static string _api = "https://ids2.app1.es/User";
-    static string _clientId = "BlazorWasmIdentity.Localhost";
+    static string _authority = "https://localhost:5001/";
+    static string _api = "https://localhost:5001/WeatherForecast";
+    static string _clientId = "Blazor5002";
 
     static OidcClient _oidcClient;
     static HttpClient _apiClient = new HttpClient { BaseAddress = new Uri(_api) };
@@ -34,7 +34,7 @@ public class Program
         // 使用环回地址上的可用端口创建重定向 URI。
         // 要求 OP 允许 127.0.0.1 上的随机端口 - 否则设置静态端口
 
-        var browser = new SystemBrowser(5001);
+        var browser = new SystemBrowser(5002);
         string redirectUri = string.Format($"https://localhost:{browser.Port}/authentication/login-callback");
         string redirectLogoutUri = string.Format($"https://localhost:{browser.Port}/authentication/logout-callback");
 
@@ -45,9 +45,11 @@ public class Program
             //ResponseType = "code", 
             RedirectUri = redirectUri,
             PostLogoutRedirectUri = redirectLogoutUri,
-            Scope = "openid profile",
+            Scope = "BlazorWasmIdentity.ServerAPI openid profile",
+            //Scope = "Blazor7.ServerAPI openid profile",
             Browser = browser,
             Policy = new Policy { RequireIdentityTokenSignature = false }
+            
         };
 
         var serilog = new LoggerConfiguration()
@@ -62,10 +64,11 @@ public class Program
         var result = await _oidcClient.LoginAsync(new LoginRequest());
 
         ShowResult(result);
+        await CallApi(result.AccessToken);
         await NextSteps(result);
     }
 
-    private static void ShowResult(LoginResult result)
+    private static void ShowResult(LoginResult result,bool showToken=false)
     {
         if (result.IsError)
         {
@@ -79,9 +82,12 @@ public class Program
             Console.WriteLine("{0}: {1}", claim.Type, claim.Value);
         }
 
-        Console.WriteLine($"\nidentity token: {result.IdentityToken}");
-        Console.WriteLine($"access token:   {result.AccessToken}");
-        Console.WriteLine($"refresh token:  {result?.RefreshToken ?? "none"}");
+        if (showToken)
+        {
+            Console.WriteLine($"\nidentity token: {result.IdentityToken}");
+            Console.WriteLine($"access token:   {result.AccessToken}");
+            Console.WriteLine($"refresh token:  {result?.RefreshToken ?? "none"}");
+        }
     }
 
     private static async Task NextSteps(LoginResult result)
@@ -131,6 +137,7 @@ public class Program
             if (response.IsSuccessStatusCode)
             {
                 var str = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Response: {str}");
                 var json = JArray.Parse(await response.Content.ReadAsStringAsync());
                 Console.WriteLine("\n\n");
                 Console.WriteLine(json);
