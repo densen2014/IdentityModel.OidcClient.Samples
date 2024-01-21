@@ -6,125 +6,131 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace ConsoleClientWithBrowser
+namespace ConsoleClientWithBrowser;
+
+public class Program
 {
-    public class Program
+    static string _authority = "https://ids2.app1.es/";
+    static string _api = "https://ids2.app1.es/User";
+    static string _clientId = "BlazorWasmIdentity.Localhost";
+
+    static OidcClient _oidcClient;
+    static HttpClient _apiClient = new HttpClient { BaseAddress = new Uri(_api) };
+
+    public static void Main(string[] args) => MainAsync().GetAwaiter().GetResult();
+
+    public static async Task MainAsync()
     {
-        static string _authority = "https://demo.duendesoftware.com";
-        static string _api = "https://demo.duendesoftware.com/api/test";
+        Console.WriteLine("+-----------------------+");
+        Console.WriteLine("|  Sign in with OIDC    |");
+        Console.WriteLine("+-----------------------+");
+        Console.WriteLine("");
 
-        static OidcClient _oidcClient;
-        static HttpClient _apiClient = new HttpClient { BaseAddress = new Uri(_api) };
+        await Login();
+    }
 
-        public static void Main(string[] args) => MainAsync().GetAwaiter().GetResult();
+    private static async Task Login()
+    {
+        // 使用环回地址上的可用端口创建重定向 URI。
+        // 要求 OP 允许 127.0.0.1 上的随机端口 - 否则设置静态端口
 
-        public static async Task MainAsync()
+        var browser = new SystemBrowser(5001);
+        string redirectUri = string.Format($"https://localhost:{browser.Port}/authentication/login-callback");
+        string redirectLogoutUri = string.Format($"https://localhost:{browser.Port}/authentication/logout-callback");
+
+        var options = new OidcClientOptions
         {
-            Console.WriteLine("+-----------------------+");
-            Console.WriteLine("|  Sign in with OIDC    |");
-            Console.WriteLine("+-----------------------+");
-            Console.WriteLine("");
-            Console.WriteLine("Press any key to sign in...");
-            Console.ReadKey();
+            Authority = _authority,
+            ClientId = _clientId,
+            //ResponseType = "code", 
+            RedirectUri = redirectUri,
+            PostLogoutRedirectUri = redirectLogoutUri,
+            Scope = "openid profile",
+            Browser = browser,
+            Policy = new Policy { RequireIdentityTokenSignature = false }
+        };
 
-            await Login();
+        var serilog = new LoggerConfiguration()
+            .MinimumLevel.Error()
+            .Enrich.FromLogContext()
+            .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}")
+            .CreateLogger();
+
+        options.LoggerFactory.AddSerilog(serilog);
+
+        _oidcClient = new OidcClient(options);
+        var result = await _oidcClient.LoginAsync(new LoginRequest());
+
+        ShowResult(result);
+        await NextSteps(result);
+    }
+
+    private static void ShowResult(LoginResult result)
+    {
+        if (result.IsError)
+        {
+            Console.WriteLine("\n\nError:\n{0}", result.Error);
+            return;
         }
 
-        private static async Task Login()
+        Console.WriteLine("\n\nClaims:");
+        foreach (var claim in result.User.Claims)
         {
-            // create a redirect URI using an available port on the loopback address.
-            // requires the OP to allow random ports on 127.0.0.1 - otherwise set a static port
-            var browser = new SystemBrowser();
-            string redirectUri = string.Format($"http://127.0.0.1:{browser.Port}");
-
-            var options = new OidcClientOptions
-            {
-                Authority = _authority,
-                ClientId = "interactive.public",
-                RedirectUri = redirectUri,
-                Scope = "openid profile api",
-                FilterClaims = false,
-                Browser = browser,
-            };
-
-            var serilog = new LoggerConfiguration()
-                .MinimumLevel.Error()
-                .Enrich.FromLogContext()
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}")
-                .CreateLogger();
-
-            options.LoggerFactory.AddSerilog(serilog);
-
-            _oidcClient = new OidcClient(options);
-            var result = await _oidcClient.LoginAsync(new LoginRequest());
-
-            ShowResult(result);
-            await NextSteps(result);
+            Console.WriteLine("{0}: {1}", claim.Type, claim.Value);
         }
 
-        private static void ShowResult(LoginResult result)
+        Console.WriteLine($"\nidentity token: {result.IdentityToken}");
+        Console.WriteLine($"access token:   {result.AccessToken}");
+        Console.WriteLine($"refresh token:  {result?.RefreshToken ?? "none"}");
+    }
+
+    private static async Task NextSteps(LoginResult result)
+    {
+        var currentAccessToken = result.AccessToken;
+        var currentRefreshToken = result.RefreshToken;
+
+        var menu = "  x...exit  c...call api   ";
+        if (currentRefreshToken != null) menu += "r...refresh token   ";
+
+        while (true)
         {
-            if (result.IsError)
+            Console.WriteLine("\n\n");
+
+            Console.Write(menu);
+            var key = Console.ReadKey();
+
+            if (key.Key == ConsoleKey.X) return;
+            if (key.Key == ConsoleKey.C) await CallApi(currentAccessToken);
+            if (key.Key == ConsoleKey.R)
             {
-                Console.WriteLine("\n\nError:\n{0}", result.Error);
-                return;
-            }
-
-            Console.WriteLine("\n\nClaims:");
-            foreach (var claim in result.User.Claims)
-            {
-                Console.WriteLine("{0}: {1}", claim.Type, claim.Value);
-            }
-
-            Console.WriteLine($"\nidentity token: {result.IdentityToken}");
-            Console.WriteLine($"access token:   {result.AccessToken}");
-            Console.WriteLine($"refresh token:  {result?.RefreshToken ?? "none"}");
-        }
-
-        private static async Task NextSteps(LoginResult result)
-        {
-            var currentAccessToken = result.AccessToken;
-            var currentRefreshToken = result.RefreshToken;
-
-            var menu = "  x...exit  c...call api   ";
-            if (currentRefreshToken != null) menu += "r...refresh token   ";
-
-            while (true)
-            {
-                Console.WriteLine("\n\n");
-
-                Console.Write(menu);
-                var key = Console.ReadKey();
-
-                if (key.Key == ConsoleKey.X) return;
-                if (key.Key == ConsoleKey.C) await CallApi(currentAccessToken);
-                if (key.Key == ConsoleKey.R)
+                var refreshResult = await _oidcClient.RefreshTokenAsync(currentRefreshToken);
+                if (refreshResult.IsError)
                 {
-                    var refreshResult = await _oidcClient.RefreshTokenAsync(currentRefreshToken);
-                    if (refreshResult.IsError)
-                    {
-                        Console.WriteLine($"Error: {refreshResult.Error}");
-                    }
-                    else
-                    {
-                        currentRefreshToken = refreshResult.RefreshToken;
-                        currentAccessToken = refreshResult.AccessToken;
+                    Console.WriteLine($"Error: {refreshResult.Error}");
+                }
+                else
+                {
+                    currentRefreshToken = refreshResult.RefreshToken;
+                    currentAccessToken = refreshResult.AccessToken;
 
-                        Console.WriteLine("\n\n");
-                        Console.WriteLine($"access token:   {refreshResult.AccessToken}");
-                        Console.WriteLine($"refresh token:  {refreshResult?.RefreshToken ?? "none"}");
-                    }
+                    Console.WriteLine("\n\n");
+                    Console.WriteLine($"access token:   {refreshResult.AccessToken}");
+                    Console.WriteLine($"refresh token:  {refreshResult?.RefreshToken ?? "none"}");
                 }
             }
         }
+    }
 
-        private static async Task CallApi(string currentAccessToken)
+    private static async Task CallApi(string currentAccessToken)
+    {
+        try
         {
             _apiClient.SetBearerToken(currentAccessToken);
             var response = await _apiClient.GetAsync("");
 
             if (response.IsSuccessStatusCode)
             {
+                var str = await response.Content.ReadAsStringAsync();
                 var json = JArray.Parse(await response.Content.ReadAsStringAsync());
                 Console.WriteLine("\n\n");
                 Console.WriteLine(json);
@@ -133,6 +139,11 @@ namespace ConsoleClientWithBrowser
             {
                 Console.WriteLine($"Error: {response.ReasonPhrase}");
             }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error: {e.Message}");
+
         }
     }
 }
