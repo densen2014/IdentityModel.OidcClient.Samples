@@ -10,12 +10,13 @@ namespace ConsoleClientWithBrowser;
 
 public class Program
 {
-    static string _authority = "https://localhost:5001/";
-    static string _api = "https://localhost:5001/WeatherForecast";
-    static string _clientId = "Blazor5002";
+    static string authority = "https://localhost:5001/";
+    //static string authority = "https://ids2.app1.es/"; //真实环境
+    static string api = $"{authority}WeatherForecast";
+    static string clientId = "Blazor5002";
 
     static OidcClient _oidcClient;
-    static HttpClient _apiClient = new HttpClient { BaseAddress = new Uri(_api) };
+    static HttpClient _apiClient = new HttpClient { BaseAddress = new Uri(api) };
 
     public static void Main(string[] args) => MainAsync().GetAwaiter().GetResult();
 
@@ -35,13 +36,13 @@ public class Program
         // 要求 OP 允许 127.0.0.1 上的随机端口 - 否则设置静态端口
 
         var browser = new SystemBrowser(5002);
-        string redirectUri = string.Format($"https://localhost:{browser.Port}/authentication/login-callback");
-        string redirectLogoutUri = string.Format($"https://localhost:{browser.Port}/authentication/logout-callback");
+        string redirectUri = string.Format($"http://localhost:{browser.Port}/authentication/login-callback");
+        string redirectLogoutUri = string.Format($"http://localhost:{browser.Port}/authentication/logout-callback");
 
         var options = new OidcClientOptions
         {
-            Authority = _authority,
-            ClientId = _clientId,
+            Authority = authority,
+            ClientId = clientId,
             //ResponseType = "code", 
             RedirectUri = redirectUri,
             PostLogoutRedirectUri = redirectLogoutUri,

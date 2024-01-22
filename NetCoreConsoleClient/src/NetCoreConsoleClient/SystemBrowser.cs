@@ -42,7 +42,7 @@ public class SystemBrowser : IBrowser
         return port;
     }
 
-    public async Task<BrowserResult> InvokeAsync(BrowserOptions options, CancellationToken cancellationToken = default(CancellationToken))
+    public async Task<BrowserResult> InvokeAsync(BrowserOptions options, CancellationToken cancellationToken = default)
     {
         using (var listener = new LoopbackHttpListener(Port, _path))
         {
@@ -51,7 +51,7 @@ public class SystemBrowser : IBrowser
             try
             {
                 var result = await listener.WaitForCallbackAsync();
-                if (String.IsNullOrWhiteSpace(result))
+                if (string.IsNullOrWhiteSpace(result))
                 {
                     return new BrowserResult { ResultType = BrowserResultType.UnknownError, Error = "Empty response." };
                 }
@@ -113,7 +113,7 @@ public class LoopbackHttpListener : IDisposable
         path = path ?? string.Empty;
         if (path.StartsWith("/")) path = path.Substring(1);
 
-        Url = $"https://localhost:{port}/{path}";
+        Url = $"http://localhost:{port}/{path}";
 
         _host = new WebHostBuilder()
             .UseKestrel()
