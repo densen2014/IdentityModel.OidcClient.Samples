@@ -1,6 +1,5 @@
 ﻿using IdentityModel.OidcClient;
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Windows.Forms;
 
@@ -8,18 +7,27 @@ namespace WinFormsWebView2
 {
     public partial class Form1 : Form
     {
+        static string authority = "https://localhost:5001/";
+        //static string authority = "https://ids2.app1.es/"; //真实环境
+        static string api = $"{authority}WeatherForecast";
+        static string clientId = "Blazor5002";
+
         OidcClient _oidcClient;
 
         public Form1()
         {
             InitializeComponent();
 
+            string redirectUri = string.Format($"http://localhost/authentication/login-callback");
+            string redirectLogoutUri = string.Format($"http://localhost/authentication/logout-callback");
+            
             var options = new OidcClientOptions
             {
-                Authority = "https://demo.identityserver.io",
-                ClientId = "interactive.public",
-                Scope = "openid email api offline_access",
-                RedirectUri = "http://localhost/winforms.client",
+                Authority = authority,
+                ClientId = clientId,
+                RedirectUri = redirectUri,
+                PostLogoutRedirectUri = redirectLogoutUri,
+                Scope = "BlazorWasmIdentity.ServerAPI openid profile",  
                 Browser = new WinFormsWebView()
             };
 

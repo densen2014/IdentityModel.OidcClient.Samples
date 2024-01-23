@@ -83,7 +83,7 @@ namespace WinFormsWebView2
                         await webView.EnsureCoreWebView2Async(null);
 
                         // Delete existing Cookies so previous logins won't remembered
-                        webView.CoreWebView2.CookieManager.DeleteAllCookies();
+                        //webView.CoreWebView2.CookieManager.DeleteAllCookies();
 
                         // Navigate
                         webView.CoreWebView2.Navigate(_options.StartUrl);

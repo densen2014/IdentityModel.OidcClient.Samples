@@ -39,7 +39,7 @@
             this.Output.Margin = new System.Windows.Forms.Padding(8);
             this.Output.Multiline = true;
             this.Output.Name = "Output";
-            this.Output.Size = new System.Drawing.Size(523, 417);
+            this.Output.Size = new System.Drawing.Size(800, 800);
             this.Output.TabIndex = 1;
             this.Output.Text = "Signing in ...";
             // 
@@ -47,7 +47,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(523, 417);
+            this.ClientSize = new System.Drawing.Size(800, 800);
             this.Controls.Add(this.Output);
             this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "Form1";
