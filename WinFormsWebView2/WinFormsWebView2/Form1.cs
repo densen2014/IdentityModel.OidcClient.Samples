@@ -3,86 +3,85 @@ using System;
 using System.Text;
 using System.Windows.Forms;
 
-namespace WinFormsWebView2
+namespace WinFormsWebView2;
+
+public partial class Form1 : Form
 {
-    public partial class Form1 : Form
+    static string authority = "https://localhost:5001/";
+    //static string authority = "https://ids2.app1.es/"; //真实环境
+    static string api = $"{authority}WeatherForecast";
+    static string clientId = "Blazor5002";
+
+    OidcClient _oidcClient;
+
+    public Form1()
     {
-        static string authority = "https://localhost:5001/";
-        //static string authority = "https://ids2.app1.es/"; //真实环境
-        static string api = $"{authority}WeatherForecast";
-        static string clientId = "Blazor5002";
+        InitializeComponent();
 
-        OidcClient _oidcClient;
-
-        public Form1()
+        string redirectUri = string.Format($"http://localhost/authentication/login-callback");
+        string redirectLogoutUri = string.Format($"http://localhost/authentication/logout-callback");
+        
+        var options = new OidcClientOptions
         {
-            InitializeComponent();
+            Authority = authority,
+            ClientId = clientId,
+            RedirectUri = redirectUri,
+            PostLogoutRedirectUri = redirectLogoutUri,
+            Scope = "BlazorWasmIdentity.ServerAPI openid profile",  
+            Browser = new WinFormsWebView()
+        };
 
-            string redirectUri = string.Format($"http://localhost/authentication/login-callback");
-            string redirectLogoutUri = string.Format($"http://localhost/authentication/logout-callback");
-            
-            var options = new OidcClientOptions
-            {
-                Authority = authority,
-                ClientId = clientId,
-                RedirectUri = redirectUri,
-                PostLogoutRedirectUri = redirectLogoutUri,
-                Scope = "BlazorWasmIdentity.ServerAPI openid profile",  
-                Browser = new WinFormsWebView()
-            };
+        _oidcClient = new OidcClient(options);
 
-            _oidcClient = new OidcClient(options);
+        Login();
+    }
 
-            Login();
+    private async void Login()
+    {
+        LoginResult loginResult;
+
+        try
+        {
+            loginResult = await _oidcClient.LoginAsync();
+        }
+        catch (Exception exception)
+        {
+            Output.Text = $"Unexpected Error: {exception.Message}";
+            return;
         }
 
-        private async void Login()
+
+        if (loginResult.IsError)
         {
-            LoginResult loginResult;
-
-            try
+            MessageBox.Show(this, loginResult.Error, "Login", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        else
+        {
+            var sb = new StringBuilder(128);
+            foreach (var claim in loginResult.User.Claims)
             {
-                loginResult = await _oidcClient.LoginAsync();
-            }
-            catch (Exception exception)
-            {
-                Output.Text = $"Unexpected Error: {exception.Message}";
-                return;
+                sb.AppendLine($"{claim.Type}: {claim.Value}");
             }
 
-
-            if (loginResult.IsError)
+            if (!string.IsNullOrWhiteSpace(loginResult.RefreshToken))
             {
-                MessageBox.Show(this, loginResult.Error, "Login", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                sb.AppendLine();
+                sb.AppendLine($"refresh token: {loginResult.RefreshToken}");
             }
-            else
+
+            if (!string.IsNullOrWhiteSpace(loginResult.IdentityToken))
             {
-                var sb = new StringBuilder(128);
-                foreach (var claim in loginResult.User.Claims)
-                {
-                    sb.AppendLine($"{claim.Type}: {claim.Value}");
-                }
-
-                if (!string.IsNullOrWhiteSpace(loginResult.RefreshToken))
-                {
-                    sb.AppendLine();
-                    sb.AppendLine($"refresh token: {loginResult.RefreshToken}");
-                }
-
-                if (!string.IsNullOrWhiteSpace(loginResult.IdentityToken))
-                {
-                    sb.AppendLine();
-                    sb.AppendLine($"identity token: {loginResult.IdentityToken}");
-                }
-
-                if (!string.IsNullOrWhiteSpace(loginResult.AccessToken))
-                {
-                    sb.AppendLine();
-                    sb.AppendLine($"access token: {loginResult.AccessToken}");
-                }
-
-                Output.Text = sb.ToString();
+                sb.AppendLine();
+                sb.AppendLine($"identity token: {loginResult.IdentityToken}");
             }
+
+            if (!string.IsNullOrWhiteSpace(loginResult.AccessToken))
+            {
+                sb.AppendLine();
+                sb.AppendLine($"access token: {loginResult.AccessToken}");
+            }
+
+            Output.Text = sb.ToString();
         }
     }
 }

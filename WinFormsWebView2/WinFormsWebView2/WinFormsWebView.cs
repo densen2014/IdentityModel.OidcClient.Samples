@@ -82,7 +82,7 @@ namespace WinFormsWebView2
                         // Initialization
                         await webView.EnsureCoreWebView2Async(null);
 
-                        // Delete existing Cookies so previous logins won't remembered
+                        // 删除现有的 Cookie，这样以前的登录就不会被记住, 以免影响测试, 反之去掉这行,就可以保持登录
                         //webView.CoreWebView2.CookieManager.DeleteAllCookies();
 
                         // Navigate

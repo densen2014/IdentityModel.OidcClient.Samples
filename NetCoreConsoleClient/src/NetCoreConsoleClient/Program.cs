@@ -43,7 +43,6 @@ public class Program
         {
             Authority = authority,
             ClientId = clientId,
-            //ResponseType = "code", 
             RedirectUri = redirectUri,
             PostLogoutRedirectUri = redirectLogoutUri,
             Scope = "BlazorWasmIdentity.ServerAPI openid profile",
