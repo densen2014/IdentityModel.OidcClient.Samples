@@ -13,8 +13,13 @@ public class MauiAuthenticationBrowser : IdentityModel.OidcClient.Browser.IBrows
                 new Uri(options.StartUrl),
                 new Uri(options.EndUrl));
 
-            var url = new RequestUrl("myapp://callback")
-                .Create(new Parameters(result.Properties));
+#if WINDOWS
+            var RedirectUri = "http://localhost/authentication/login-callback";
+#else
+            var RedirectUri = "myapp://callback/authentication/login-callback";
+#endif
+            var url = new RequestUrl(RedirectUri)
+                      .Create(new Parameters(result.Properties));
 
             return new BrowserResult
             {

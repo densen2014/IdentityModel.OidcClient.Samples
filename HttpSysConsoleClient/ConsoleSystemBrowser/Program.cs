@@ -1,5 +1,4 @@
 ﻿using IdentityModel.OidcClient;
-using IdentityModel.OidcClient.Browser;
 using System;
 using System.Diagnostics;
 using System.Net;
@@ -23,20 +22,19 @@ class Program
         Console.WriteLine("");
 
         Program p = new Program();
-        p.SignIn();
+        p.Login();
 
         Console.ReadKey();
     }
-
-    private async void SignIn()
+    private async void Login()
     {
 
-        string redirectUri = string.Format($"http://localhost/authentication/login-callback/");
-        string redirectLogoutUri = string.Format($"http://localhost/authentication/login-callback");
+        string redirectUri = $"http://localhost/authentication/login-callback";
+        string redirectLogoutUri = $"http://localhost/authentication/logout-callback";
 
         // create an HttpListener to listen for requests on that redirect URI.
         var http = new HttpListener();
-        http.Prefixes.Add(redirectUri);
+        http.Prefixes.Add(redirectUri+"/");
         Console.WriteLine("Listening..");
         http.Start();
 
@@ -47,6 +45,8 @@ class Program
             RedirectUri = redirectUri,
             PostLogoutRedirectUri = redirectLogoutUri,
             Scope = "BlazorWasmIdentity.ServerAPI openid profile",
+            //Scope = "Densen.IdentityAPI openid profile",
+            //Scope = "Blazor7.ServerAPI openid profile",
         };
             
         var client = new OidcClient(options);
@@ -67,7 +67,7 @@ class Program
 
         // sends an HTTP response to the browser.
         var response = context.Response;
-        string responseString = $"<html><head><meta http-equiv='refresh' content='10;url={authority}'></head><body><h1>您现在可以返回应用程序.</h1></body></html>";
+        string responseString = $"<html><head><meta charset='utf-8' http-equiv='refresh' content='10;url={authority}'></head><body><h1>您现在可以返回应用程序.</h1></body></html>";
         var buffer = Encoding.UTF8.GetBytes(responseString);
         response.ContentLength64 = buffer.Length;
         var responseOutput = response.OutputStream;
@@ -117,6 +117,12 @@ class Program
 
     public static string GetRequestPostData(HttpListenerRequest request)
     {
+        //Get url code
+        if (request.HttpMethod == "GET")
+        {
+            return request.Url.Query;
+        }
+
         if (!request.HasEntityBody)
         {
             return null;

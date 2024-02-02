@@ -36,8 +36,8 @@ public class Program
         // 要求 OP 允许 127.0.0.1 上的随机端口 - 否则设置静态端口
 
         var browser = new SystemBrowser(5002);
-        string redirectUri = string.Format($"http://localhost:{browser.Port}/authentication/login-callback");
-        string redirectLogoutUri = string.Format($"http://localhost:{browser.Port}/authentication/logout-callback");
+        string redirectUri = $"http://localhost:{browser.Port}/authentication/login-callback";
+        string redirectLogoutUri = $"http://localhost:{browser.Port}/authentication/logout-callback";
 
         var options = new OidcClientOptions
         {
@@ -46,6 +46,7 @@ public class Program
             RedirectUri = redirectUri,
             PostLogoutRedirectUri = redirectLogoutUri,
             Scope = "BlazorWasmIdentity.ServerAPI openid profile",
+            //Scope = "Densen.IdentityAPI openid profile",
             //Scope = "Blazor7.ServerAPI openid profile",
             Browser = browser,
             Policy = new Policy { RequireIdentityTokenSignature = false }
