@@ -44,8 +44,8 @@ class Program
             ClientId = clientId,
             RedirectUri = redirectUri,
             PostLogoutRedirectUri = redirectLogoutUri,
-            Scope = "BlazorWasmIdentity.ServerAPI openid profile",
-            //Scope = "Densen.IdentityAPI openid profile",
+            //Scope = "BlazorWasmIdentity.ServerAPI openid profile",
+            Scope = "Densen.IdentityAPI openid profile",
             //Scope = "Blazor7.ServerAPI openid profile",
         };
             

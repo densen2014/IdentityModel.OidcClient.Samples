@@ -10,100 +10,99 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace WinFormsWebView2
+namespace WinFormsWebView2;
+
+public class WinFormsWebView : IBrowser
 {
-    public class WinFormsWebView : IBrowser
+    private readonly Func<Form> _formFactory;
+    private BrowserOptions _options;
+
+    public WinFormsWebView(Func<Form> formFactory)
     {
-        private readonly Func<Form> _formFactory;
-        private BrowserOptions _options;
+        _formFactory = formFactory;
+    }
 
-        public WinFormsWebView(Func<Form> formFactory)
+    public WinFormsWebView(string title = "Authenticating ...", int width = 1024, int height = 768)
+        : this(() => new Form
         {
-            _formFactory = formFactory;
-        }
+            Name = "WebAuthentication",
+            Text = title,
+            Width = width,
+            Height = height
+        })
+    { }
 
-        public WinFormsWebView(string title = "Authenticating ...", int width = 1024, int height = 768)
-            : this(() => new Form
+    public async Task<BrowserResult> InvokeAsync(BrowserOptions options, CancellationToken token = default)
+    {
+        _options = options;
+
+        using (var form = _formFactory.Invoke())
+        {
+            using (var webView = new WebView2()
             {
-                Name = "WebAuthentication",
-                Text = title,
-                Width = width,
-                Height = height
+                Dock = DockStyle.Fill
             })
-        { }
-
-        public async Task<BrowserResult> InvokeAsync(BrowserOptions options, CancellationToken token = default)
-        {
-            _options = options;
-
-            using (var form = _formFactory.Invoke())
             {
-                using (var webView = new WebView2()
+                var signal = new SemaphoreSlim(0, 1);
+
+                var browserResult = new BrowserResult
                 {
-                    Dock = DockStyle.Fill
-                })
+                    ResultType = BrowserResultType.UserCancel
+                };
+
+                form.FormClosed += (o, e) =>
                 {
-                    var signal = new SemaphoreSlim(0, 1);
+                    signal.Release();
+                };
 
-                    var browserResult = new BrowserResult
+                webView.NavigationStarting += (s, e) =>
+                {
+                    if (IsBrowserNavigatingToRedirectUri(new Uri(e.Uri)))
                     {
-                        ResultType = BrowserResultType.UserCancel
-                    };
+                        e.Cancel = true;
 
-                    form.FormClosed += (o, e) =>
-                    {
-                        signal.Release();
-                    };
-
-                    webView.NavigationStarting += (s, e) =>
-                    {
-                        if (IsBrowserNavigatingToRedirectUri(new Uri(e.Uri)))
+                        browserResult = new BrowserResult()
                         {
-                            e.Cancel = true;
+                            ResultType = BrowserResultType.Success,
+                            Response = new Uri(e.Uri).AbsoluteUri
+                        };
 
-                            browserResult = new BrowserResult()
-                            {
-                                ResultType = BrowserResultType.Success,
-                                Response = new Uri(e.Uri).AbsoluteUri
-                            };
-
-                            signal.Release();
-                            form.Close();
-                        }
-                    };
-
-                    try
-                    {
-                        form.Controls.Add(webView);
-                        webView.Show();
-
-                        form.Show();
-
-                        // Initialization
-                        await webView.EnsureCoreWebView2Async(null);
-
-                        // 删除现有的 Cookie，这样以前的登录就不会被记住, 以免影响测试, 反之去掉这行,就可以保持登录
-                        //webView.CoreWebView2.CookieManager.DeleteAllCookies();
-
-                        // Navigate
-                        webView.CoreWebView2.Navigate(_options.StartUrl);
-
-                        await signal.WaitAsync();
+                        signal.Release();
+                        form.Close();
                     }
-                    finally
-                    {
-                        form.Hide();
-                        webView.Hide();
-                    }
+                };
 
-                    return browserResult;
+                try
+                {
+                    form.Controls.Add(webView);
+                    webView.Show();
+
+                    form.Show();
+
+                    // Initialization
+                    await webView.EnsureCoreWebView2Async(null);
+
+                    // 删除现有的 Cookie，这样以前的登录就不会被记住, 以免影响测试, 反之去掉这行,就可以保持登录
+                    //webView.CoreWebView2.CookieManager.DeleteAllCookies();
+
+                    // Navigate
+                    webView.CoreWebView2.Navigate(_options.StartUrl);
+
+                    await signal.WaitAsync();
                 }
+                finally
+                {
+                    form.Hide();
+                    webView.Hide();
+                }
+
+                return browserResult;
             }
         }
+    }
 
-        private bool IsBrowserNavigatingToRedirectUri(Uri uri)
-        {
-            return uri.AbsoluteUri.StartsWith(_options?.EndUrl);
-        }
+    private bool IsBrowserNavigatingToRedirectUri(Uri uri)
+    {
+        return uri.AbsoluteUri.StartsWith(_options?.EndUrl);
     }
 }

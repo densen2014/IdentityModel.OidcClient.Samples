@@ -18,16 +18,18 @@ public partial class Form1 : Form
     {
         InitializeComponent();
 
-        string redirectUri = string.Format($"http://localhost/authentication/login-callback");
-        string redirectLogoutUri = string.Format($"http://localhost/authentication/logout-callback");
-        
+        string redirectUri = $"http://localhost/authentication/login-callback";
+        string redirectLogoutUri = $"http://localhost/authentication/logout-callback";
+
         var options = new OidcClientOptions
         {
             Authority = authority,
             ClientId = clientId,
             RedirectUri = redirectUri,
             PostLogoutRedirectUri = redirectLogoutUri,
-            Scope = "BlazorWasmIdentity.ServerAPI openid profile",  
+            //Scope = "BlazorWasmIdentity.ServerAPI openid profile",
+            Scope = "Densen.IdentityAPI openid profile",
+            //Scope = "Blazor7.ServerAPI openid profile",
             Browser = new WinFormsWebView()
         };
 
